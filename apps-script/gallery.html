@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{--ink:#1C231E;--muted:#5E6A60;--line:#D5DACF;--paper:#F0F2ED;--surface:#fff;--accent:#2A5E63}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  h1{font-size:19px;margin:0 8px 0 0}
+  select,button{font:inherit;font-size:14px;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+  button{cursor:pointer} button:hover{border-color:var(--accent)}
+  button.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .count{color:var(--muted);font-size:13px;margin-left:auto}
+  main{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+  .tile:hover{box-shadow:0 8px 22px -12px rgba(0,0,0,.35)}
+  .tile img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#eee}
+  .tile .doc{aspect-ratio:4/3;display:grid;place-items:center;color:var(--muted);font-size:13px;background:#f5f6f2}
+  .tile .cap{padding:8px 11px;font-size:13.5px;display:flex;justify-content:space-between;gap:6px}
+  .tile .cap b{font-weight:600} .tile .cap span{color:var(--muted);font-size:12px;white-space:nowrap}
+  .empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:60px 0}
+  .view{position:fixed;inset:0;background:rgba(10,14,12,.85);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:20px;z-index:20}
+  .view.on{display:flex}
+  .view img{max-width:96vw;max-height:84vh;border-radius:8px;background:#fff}
+  .view .nm{color:#fff;font-size:18px;font-weight:600}
+  .view .nav{display:flex;gap:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>제출함 갤러리</h1>
+  <select id="klass"></select>
+  <select id="act"></select>
+  <button id="reload">새로 고침</button>
+  <button id="present" class="pri">발표 모드</button>
+  <a id="openDrive" target="_blank" style="font-size:13px;color:var(--accent)">드라이브에서 열기</a>
+  <span class="count" id="count"></span>
+</header>
+<main id="grid"><div class="empty">학급과 활동을 고르세요</div></main>
+
+<div class="view" id="view">
+  <div class="nm" id="vName"></div>
+  <img id="vImg" alt="">
+  <div class="nav">
+    <button id="prev">◀ 이전</button>
+    <button id="close">닫기 (Esc)</button>
+    <button id="next">다음 ▶</button>
+  </div>
+</div>
+
+<script>
+  var TREE = <?!= tree ?>;
+  var items = [], cur = 0;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fillKlass() {
+    var ks = Object.keys(TREE.tree || {}).sort();
+    $("klass").innerHTML = ks.map(function (k) { return "<option>" + k + "</option>"; }).join("") || "<option value=''>학급 없음</option>";
+    $("openDrive").href = TREE.root || "#";
+    fillAct();
+  }
+  function fillAct() {
+    var acts = (TREE.tree || {})[$("klass").value] || [];
+    $("act").innerHTML = acts.map(function (a) { return "<option>" + a + "</option>"; }).join("") || "<option value=''>활동 없음</option>";
+    load();
+  }
+  function load() {
+    var k = $("klass").value, a = $("act").value;
+    if (!k || !a) { $("grid").innerHTML = "<div class='empty'>제출물이 없습니다</div>"; $("count").textContent = ""; return; }
+    $("grid").innerHTML = "<div class='empty'>불러오는 중…</div>";
+    google.script.run.withSuccessHandler(function (r) {
+      items = r.items || [];
+      $("count").textContent = items.length + "명 제출";
+      if (!items.length) { $("grid").innerHTML = "<div class='empty'>아직 제출물이 없습니다</div>"; return; }
+      $("grid").innerHTML = items.map(function (it, i) {
+        var isImg = /^image\//.test(it.mime);
+        var thumb = isImg ? "<img loading='lazy' src='https://drive.google.com/thumbnail?id=" + it.id + "&sz=w480' alt=''>"
+                          : "<div class='doc'>" + (it.mime.split("/")[1] || "파일") + "</div>";
+        return "<div class='tile' data-i='" + i + "'>" + thumb +
+               "<div class='cap'><b>" + it.name.replace(/\.[^.]+$/, "") + "</b><span>" + new Date(it.updated).toLocaleDateString("ko-KR") + "</span></div></div>";
+      }).join("");
+    }).withFailureHandler(function (e) { $("grid").innerHTML = "<div class='empty'>오류: " + e.message + "</div>"; })
+      .apiList(k, a);
+  }
+  function show(i) {
+    if (!items.length) return;
+    cur = (i + items.length) % items.length;
+    var it = items[cur];
+    $("vName").textContent = it.name.replace(/\.[^.]+$/, "");
+    if (/^image\//.test(it.mime)) { $("vImg").style.display = ""; $("vImg").src = "https://drive.google.com/thumbnail?id=" + it.id + "&sz=w1600"; }
+    else { $("vImg").style.display = "none"; window.open(it.url, "_blank"); }
+    $("view").classList.add("on");
+  }
+  $("grid").addEventListener("click", function (e) { var t = e.target.closest(".tile"); if (t) show(+t.dataset.i); });
+  $("klass").addEventListener("change", fillAct);
+  $("act").addEventListener("change", load);
+  $("reload").addEventListener("click", function () {
+    google.script.run.withSuccessHandler(function (t) { TREE = t; var k = $("klass").value, a = $("act").value; fillKlass(); $("klass").value = k; fillAct(); $("act").value = a; load(); }).apiTree();
+  });
+  $("present").addEventListener("click", function () { show(0); });
+  $("prev").addEventListener("click", function () { show(cur - 1); });
+  $("next").addEventListener("click", function () { show(cur + 1); });
+  $("close").addEventListener("click", function () { $("view").classList.remove("on"); });
+  document.addEventListener("keydown", function (e) {
+    if (!$("view").classList.contains("on")) return;
+    if (e.key === "Escape") $("view").classList.remove("on");
+    if (e.key === "ArrowLeft") show(cur - 1);
+    if (e.key === "ArrowRight" || e.key === " ") show(cur + 1);
+  });
+  fillKlass();
+</script>
+</body>
+</html>
