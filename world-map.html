@@ -373,6 +373,22 @@ ul.chips.cities li.selB{background:var(--cB); border-color:var(--cB); color:#fff
 ul.chips.cities li .swatch{width:9px;height:9px;border-radius:50%;flex:none}
 li.trop .swatch{background:var(--ztrop)} li.arid .swatch{background:var(--zarid)} li.temp .swatch{background:var(--ztemp)}
 li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpolar)} li.high .swatch{background:var(--zhigh)}
+.modal{position:fixed; inset:0; background:rgba(10,20,30,.45); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px}
+.modalbox{background:var(--surface); color:var(--ink); border-radius:14px; padding:18px 20px; width:min(640px,100%); max-height:90vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modalbox h3{margin:0 0 6px; font-size:17px}
+.modalbox .hint{margin:0 0 12px; font-size:13px; color:var(--muted); line-height:1.55}
+.bkrow{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0}
+#bkText{width:100%; box-sizing:border-box; height:110px; font:12px/1.4 ui-monospace,monospace; border:1px solid var(--line); border-radius:9px; padding:8px; background:var(--surface2); color:var(--ink); resize:vertical}
+#bkFound{font-size:13px; line-height:1.6}
+#bkFound .found{border:1px solid var(--line); border-radius:9px; padding:8px 10px; margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between}
+ul.chips.courses li{cursor:pointer}
+ul.chips.courses li:hover{border-color:var(--accent); color:var(--ink)}
+ul.chips.courses li.sel{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+ul.chips.courses li .num{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; opacity:.75}
+g.course{cursor:pointer}
+text.colbl{font-family:"Gowun Batang",serif; font-weight:700; paint-order:stroke; stroke:var(--surface); stroke-linejoin:round; fill:var(--ink)}
+svg#map.placing{cursor:crosshair!important}
+.kind.trop{color:var(--ztrop)} .kind.arid{color:#B89A1E} .kind.temp{color:#4F8F2E} .kind.cold{color:#2E8A99} .kind.polar{color:#7A5FA8} .kind.high{color:var(--zhigh)}
 .hidden{display:none!important}
 </style>
 
@@ -418,6 +434,9 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
     <button class="btn" id="zAll">모두 켜기</button>
     <button class="btn" id="zNone">모두 끄기</button>
     <button class="btn" id="cityLblBtn" aria-pressed="true">도시 이름</button>
+    <button class="btn" id="baseCityBtn" aria-pressed="true">교과서 도시</button>
+    <button class="btn primary" id="courseAddBtn">여행 코스 추가</button>
+    <span class="saveline" id="courseline"></span>
   </div>
 
   <div class="bar hidden" id="barMap">
@@ -429,8 +448,27 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
       <button data-c="pl" aria-pressed="false"><i style="background:var(--pl)"></i>고원·평야</button>
     </div>
     <button class="btn primary" id="exportBtn">지도 그림 만들기</button>
+    <button class="btn" id="backupBtn">백업·복구</button>
     <button class="btn danger" id="clearBtn">모두 지우기</button>
     <span class="saveline" id="saveline"></span>
+  </div>
+
+  <div class="modal hidden" id="backupModal" role="dialog" aria-modal="true" aria-labelledby="bkTitle">
+    <div class="modalbox">
+      <h3 id="bkTitle">백업·복구</h3>
+      <p class="hint">지도는 <b>이 컴퓨터의 이 브라우저</b>에만 저장돼요. 다른 컴퓨터나 다른 주소(파일로 연 것 ↔ 인터넷 주소)로 옮기려면 백업 코드를 복사해서 붙여넣으세요.</p>
+      <div class="bkrow">
+        <button class="btn primary" id="bkCopy">백업 코드 복사</button>
+        <span class="saveline" id="bkMsg"></span>
+      </div>
+      <textarea id="bkText" placeholder="여기에 백업 코드를 붙여넣고 '복구'를 누르세요" spellcheck="false"></textarea>
+      <div class="bkrow">
+        <button class="btn primary" id="bkRestore">복구 (붙여넣은 코드로 되살리기)</button>
+        <button class="btn" id="bkScan">이 컴퓨터에서 지난 기록 찾기</button>
+        <button class="btn" id="bkClose">닫기</button>
+      </div>
+      <div id="bkFound"></div>
+    </div>
   </div>
 
   <main>
@@ -470,6 +508,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
           <g id="marks"></g>
           <g id="mypins"></g>
           <g id="cities" style="display:none"></g>
+          <g id="courses" style="display:none"></g>
         </svg>
         <div class="zoomctl">
           <button id="zoomIn" title="확대" aria-label="확대">＋</button>
@@ -497,6 +536,11 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
       <div class="card listwrap" id="quizList">
         <h3>찾을 목록</h3>
         <ul class="chips" id="list"></ul>
+      </div>
+
+      <div class="card listwrap hidden" id="courseList">
+        <h3>우리 반 여행 코스 — 눌러서 자세히 보기</h3>
+        <ul class="chips courses" id="courseChips"></ul>
       </div>
 
       <div class="card listwrap hidden" id="cityList">
@@ -552,6 +596,40 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
 
       <!-- climate panel -->
       <div id="climatePanel" class="hidden">
+        <div class="card editor hidden" id="courseForm">
+          <h3 class="t" id="cfTitle">여행 코스 추가</h3>
+          <div class="field"><label>코스 이름 (도시 · 나라)</label><input type="text" id="cfName" placeholder="예: 카이로 · 이집트" maxlength="30"></div>
+          <div class="field"><label>발표 학생</label><input type="text" id="cfWho" placeholder="예: 김민지" maxlength="20"></div>
+          <div class="field"><label>기후대</label>
+            <div class="zchips" id="cfZones" role="group" aria-label="기후대 고르기">
+              <button data-z="trop" aria-pressed="true"><i style="background:var(--ztrop)"></i>열대</button>
+              <button data-z="arid" aria-pressed="false"><i style="background:var(--zarid)"></i>건조</button>
+              <button data-z="temp" aria-pressed="false"><i style="background:var(--ztemp)"></i>온대</button>
+              <button data-z="cold" aria-pressed="false"><i style="background:var(--zcold)"></i>냉대</button>
+              <button data-z="polar" aria-pressed="false"><i style="background:var(--zpolar)"></i>한대</button>
+              <button data-z="high" aria-pressed="false" class="hatch"><i style="background:var(--zhigh)"></i>고산</button>
+            </div>
+          </div>
+          <div class="field"><label>발표 자료 링크 (캔바 등)</label><input type="text" id="cfLink" placeholder="https://www.canva.com/design/..." inputmode="url"></div>
+          <p class="note" id="cfNote">저장을 누른 뒤 지도에서 도시 자리를 클릭하세요.</p>
+          <div class="rowbtns">
+            <button class="btn primary" id="cfSave">저장</button>
+            <button class="btn" id="cfCancel">취소</button>
+          </div>
+        </div>
+        <div class="card editor hidden" id="courseCard">
+          <span class="kind" id="ccZone">열대</span>
+          <h3 class="t" id="ccName">코스</h3>
+          <p class="note" id="ccMeta"></p>
+          <a class="btn primary" id="ccOpen" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;display:block">발표 자료 열기 ↗</a>
+          <p class="note hidden" id="ccNoLink">아직 링크가 없어요. 편집에서 캔바 링크를 넣어 주세요.</p>
+          <div class="rowbtns">
+            <button class="btn" id="ccEdit">편집</button>
+            <button class="btn" id="ccMove">위치 옮기기</button>
+            <button class="btn danger" id="ccDel">삭제</button>
+            <button class="btn" id="ccClose">닫기</button>
+          </div>
+        </div>
         <div class="card hintbox" id="climateHelp">
           <b>기후 그래프 비교하기</b>
           <ol>
@@ -769,7 +847,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
   function redrawAll(){
     if(mode==="quiz"){ redrawAnswers(); redrawMarks(); }
     else if(mode==="map"){ renderTruth(); renderPins(); }
-    else { renderCities(); renderLatLines(); }
+    else { renderCities(); renderCourses(); renderLatLines(); }
   }
 
   /* ================= MODE ================= */
@@ -783,7 +861,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
     el("tabClimate").setAttribute("aria-selected",cl?"true":"false");
     show("barQuiz",q); show("barMap",mm); show("barClimate",cl);
     show("quizPanel",q); show("mapPanel",mm); show("climatePanel",cl);
-    show("quizList",q); show("pickList",mm); show("cityList",cl);
+    show("quizList",q); show("pickList",mm); show("cityList",cl&&CL.showBase); show("courseList",cl);
     show("legendGeo",!cl); show("legendClimate",cl);
     gAns.style.display=q?"":"none";
     gMark.style.display=q?"":"none";
@@ -791,6 +869,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
     gTruth.style.display=mm?"":"none";
     el("climate").style.display=cl?"":"none";
     el("cities").style.display=cl?"":"none";
+    el("courses").style.display=cl?"":"none";
     el("latlines").style.display=cl?"":"none";
     el("tagline").textContent= q ? "이름을 읽고 지도에서 위치를 찾아 클릭하세요"
                               : mm ? "장소를 골라 지도에 놓고, 사진과 설명을 더해 보세요"
@@ -932,9 +1011,37 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
     try{ localStorage.setItem(KEY,JSON.stringify({author:M.author,items:M.items,truth:M.truth})); }
     catch(e){ flash("저장 공간이 가득 찼어요. 사진 몇 개를 지워 주세요.",true); }
   }
+  function applyData(d){
+      M.author=d.author||""; M.items=Array.isArray(d.items)?d.items:[];
+      if(d.truth&&typeof d.truth==="object") M.truth={mt:d.truth.mt?1:0,wa:d.truth.wa?1:0,pl:d.truth.pl?1:0};
+      else if(d.truth===true) M.truth={mt:1,wa:1,pl:1};
+      M.items.forEach(function(it){ var n=parseInt(String(it.uid).replace(/\D/g,""),10); if(n>=uidN) uidN=n+1; });
+  }
+  // 이 브라우저에 남아 있는 지난 기록(예전 저장 키 포함)을 모두 찾는다
+  function scanSaved(){
+    var out=[];
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i); var raw=localStorage.getItem(k);
+        if(!raw||raw.charAt(0)!=="{") continue;
+        var d; try{ d=JSON.parse(raw); }catch(e){ continue; }
+        if(!d||!Array.isArray(d.items)) continue;
+        var ok=d.items.some(function(it){ return it&&typeof it==="object"&&("x" in it)&&("name" in it); });
+        if(!ok) continue;
+        out.push({key:k,data:d,n:d.items.length,photos:d.items.filter(function(it){return it.photo;}).length,size:raw.length});
+      }
+    }catch(e){}
+    return out;
+  }
   function load(){
     try{
-      var raw=localStorage.getItem(KEY); if(!raw) return;
+      var raw=localStorage.getItem(KEY);
+      if(!raw){
+        // 현재 키가 비어 있으면 예전 키에서 자동 복구
+        var found=scanSaved().filter(function(f){ return f.key!==KEY&&f.n>0; }).sort(function(a,b){ return b.n-a.n; });
+        if(found.length){ applyData(found[0].data); save(); setTimeout(function(){ flash("지난 기록 "+found[0].n+"개를 자동으로 되살렸어요."); },600); }
+        return;
+      }
       var d=JSON.parse(raw);
       M.author=d.author||""; M.items=Array.isArray(d.items)?d.items:[];
       if(d.truth&&typeof d.truth==="object") M.truth={mt:d.truth.mt?1:0,wa:d.truth.wa?1:0,pl:d.truth.pl?1:0};
@@ -1099,6 +1206,9 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
     if(mode==="quiz") quizClick(pt);
     else if(mode==="map") mapClick(pt);
     else {
+      if(CO.placing){ placeCourse(pt); return; }
+      var gc=e.target.closest ? e.target.closest("g.course") : null;
+      if(gc){ selectCourse(gc.getAttribute("data-id")); return; }
       var g=e.target.closest ? e.target.closest("g.city") : null;
       if(g) toggleCity(g.getAttribute("data-id"));
     }
@@ -1109,10 +1219,63 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
   Array.prototype.forEach.call(el("tchips").children,function(b){
     b.addEventListener("click",function(){ M.truth[b.dataset.c]=M.truth[b.dataset.c]?0:1; save(); renderMap(); });
   });
+  /* ---------- 백업·복구 ---------- */
+  function bkFlash(msg,bad){ var m=el("bkMsg"); m.textContent=msg; m.style.color=bad?"var(--no)":"var(--ok)"; }
+  function backupCode(){ return "GEOMAP1:"+btoa(unescape(encodeURIComponent(JSON.stringify({author:M.author,items:M.items,truth:M.truth,courses:CO.list,at:Date.now()})))); }
+  function parseBackup(t){
+    t=(t||"").trim();
+    if(t.indexOf("GEOMAP1:")===0){ t=decodeURIComponent(escape(atob(t.slice(8)))); }
+    var d=JSON.parse(t); if(!d||!Array.isArray(d.items)) throw new Error("bad"); return d;
+  }
+  function restoreData(d,label){
+    var n=d.items.length;
+    if(M.items.length&&!confirm("지금 지도에 있는 "+M.items.length+"개를 지우고 "+label+"("+n+"개)로 바꿀까요?")) return;
+    applyData(d); save(); renderMap(); el("author").value=M.author;
+    if(Array.isArray(d.courses)&&d.courses.length){ CO.list=d.courses; coSave(); }
+    bkFlash(n+"개를 되살렸어요."+(Array.isArray(d.courses)&&d.courses.length?" (여행 코스 "+d.courses.length+"개 포함)":"")); 
+  }
+  function renderFound(){
+    var box=el("bkFound"); box.innerHTML="";
+    var list=scanSaved();
+    if(!list.length){ box.textContent="이 브라우저에는 저장된 지도 기록이 없어요. (다른 브라우저·다른 컴퓨터·파일로 열었던 창에서 찾아보세요)"; return; }
+    list.forEach(function(f){
+      var row=document.createElement("div"); row.className="found";
+      var cur=(f.key===KEY);
+      row.innerHTML='<span><b>'+(cur?"지금 쓰는 기록":"지난 기록")+'</b> · 표시 '+f.n+'개, 사진 '+f.photos+'장'+(f.data.author?' · '+f.data.author:'')+' <span style="color:var(--muted)">('+f.key+')</span></span>';
+      if(!cur||!M.items.length){
+        var b=document.createElement("button"); b.className="btn primary"; b.textContent="이 기록으로 되살리기";
+        b.addEventListener("click",function(){ restoreData(f.data,"지난 기록"); renderFound(); });
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+    });
+  }
+  el("backupBtn").addEventListener("click",function(){ el("bkText").value=""; bkFlash(""); el("bkFound").innerHTML=""; el("backupModal").classList.remove("hidden"); });
+  el("bkClose").addEventListener("click",function(){ el("backupModal").classList.add("hidden"); });
+  el("backupModal").addEventListener("click",function(e){ if(e.target===el("backupModal")) el("backupModal").classList.add("hidden"); });
+  el("bkCopy").addEventListener("click",function(){
+    if(!M.items.length&&!CO.list.length){ bkFlash("지도에 표시한 것이 없어요.",true); return; }
+    var code=backupCode(); el("bkText").value=code;
+    var done=function(){ bkFlash("복사했어요. 다른 컴퓨터나 주소에서 붙여넣고 '복구'를 누르세요. (메모장에 붙여넣어 파일로 두어도 돼요)"); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done,function(){ el("bkText").select(); document.execCommand("copy"); done(); });
+    else { el("bkText").select(); document.execCommand("copy"); done(); }
+  });
+  el("bkRestore").addEventListener("click",function(){
+    var t=el("bkText").value; if(!t.trim()){ bkFlash("먼저 백업 코드를 붙여넣으세요.",true); return; }
+    try{ restoreData(parseBackup(t),"붙여넣은 기록"); }catch(e){ bkFlash("백업 코드가 아니에요. 처음부터 끝까지 전부 복사했는지 확인하세요.",true); }
+  });
+  el("bkScan").addEventListener("click",renderFound);
+
   el("clearBtn").addEventListener("click",function(){
     if(!M.items.length) return;
     if(!confirm("지도에 놓은 것을 모두 지울까요? 되돌릴 수 없어요.")) return;
+    try{
+      var tr=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k.indexOf(KEY+"-trash-")===0) tr.push(k); }
+      tr.sort(); while(tr.length>1) localStorage.removeItem(tr.shift());
+      localStorage.setItem(KEY+"-trash-"+Date.now(),localStorage.getItem(KEY));
+    }catch(e){}
     M.items=[]; M.sel=null; M.pending=null; save(); renderMap();
+    flash("지웠어요. 실수였다면 '백업·복구 → 지난 기록 찾기'에서 되살릴 수 있어요.");
   });
   Array.prototype.forEach.call(document.querySelectorAll(".addform .seg button"),function(b){
     b.addEventListener("click",function(){
@@ -1233,7 +1396,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
         meta:{places:M.items.map(function(i){return i.name||"";}).filter(Boolean), count:M.items.length}
       }).catch(function(){});
     });
-  }
+  } else { el("submitBtn").classList.add("hidden"); }
   el("shot").addEventListener("click",function(e){ if(e.target===this) this.classList.add("hidden"); });
   document.addEventListener("keydown",function(e){ if(e.key==="Escape") el("shot").classList.add("hidden"); });
   el("exportBtn").addEventListener("click",function(){
@@ -1339,7 +1502,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
   var CITIES=[{"id": "kl", "name": "쿠알라룸푸르", "country": "말레이시아", "lat": 3.14, "lon": 101.69, "elev": 63, "zone": "trop", "sub": "열대 우림 기후", "temp": [27.3, 27.8, 28.1, 28.1, 28.5, 28.4, 28.0, 28.0, 27.7, 27.5, 27.1, 27.1], "prec": [226.7, 192.8, 270.4, 301.5, 229.9, 145.8, 165.2, 174.3, 220.3, 283.8, 355.8, 280.6], "la": "end", "dx": -10, "dy": -8}, {"id": "dar", "name": "다르에스살람", "country": "탄자니아", "lat": -6.79, "lon": 39.28, "elev": 55, "zone": "trop", "sub": "열대 사바나 기후", "temp": [28.2, 28.2, 27.7, 26.7, 26.0, 24.6, 23.8, 24.1, 24.9, 26.1, 26.9, 27.9], "prec": [54.2, 70.8, 169.6, 263.6, 172.2, 31.3, 15.8, 17.8, 20.2, 77.3, 114.4, 110.2], "la": "start", "dx": 10, "dy": 12}, {"id": "asw", "name": "아스완", "country": "이집트", "lat": 24.09, "lon": 32.9, "elev": 99, "zone": "arid", "sub": "건조 기후 (사막)", "temp": [16.3, 18.6, 22.9, 28.0, 32.2, 34.4, 35.1, 35.0, 32.7, 29.2, 22.7, 17.6], "prec": [0.1, 0.0, 0.6, 0.3, 0.1, 0.0, 0.0, 0.0, 0.1, 0.7, 0.0, 0.1], "la": "start", "dx": 10, "dy": 4}, {"id": "ub", "name": "울란바토르", "country": "몽골", "lat": 47.92, "lon": 106.92, "elev": 1303, "zone": "arid", "sub": "건조 기후 (초원)", "temp": [-21.3, -16.2, -6.7, 3.0, 10.2, 16.6, 19.0, 16.6, 10.0, 0.9, -10.6, -19.0], "prec": [2.1, 2.8, 4.6, 8.4, 21.7, 47.2, 74.5, 65.4, 27.9, 8.6, 6.3, 3.5], "la": "start", "dx": 10, "dy": -6}, {"id": "lon", "name": "런던", "country": "영국", "lat": 51.51, "lon": -0.13, "elev": 25, "zone": "temp", "sub": "온대 기후 (서안 해양성)", "temp": [5.6, 5.8, 7.9, 10.5, 13.7, 16.8, 19.0, 18.7, 15.9, 12.3, 8.4, 5.9], "prec": [58.8, 45.0, 38.8, 42.3, 45.9, 47.3, 45.8, 52.8, 49.6, 65.1, 66.6, 57.1], "la": "end", "dx": -10, "dy": -6}, {"id": "seo", "name": "서울", "country": "대한민국", "lat": 37.57, "lon": 126.98, "elev": 38, "zone": "temp", "sub": "온대 기후 (여름 덥고 비 많음)", "temp": [-2.0, 0.7, 6.1, 12.6, 18.2, 22.7, 25.3, 26.1, 21.7, 15.0, 7.5, 0.2], "prec": [16.8, 28.2, 36.9, 72.9, 103.6, 129.5, 414.4, 348.2, 141.5, 52.2, 51.1, 22.6], "la": "end", "dx": -10, "dy": -8}, {"id": "dae", "name": "대구", "country": "대한민국", "lat": 35.87, "lon": 128.6, "elev": 106, "zone": "temp", "sub": "온대 기후 (우리 고장)", "temp": [1.1, 3.5, 8.4, 14.5, 19.7, 23.4, 26.3, 26.7, 22.1, 16.2, 9.4, 3.0], "prec": [18.6, 25.4, 49.0, 70.6, 77.9, 129.2, 223.9, 245.3, 142.4, 50.1, 29.7, 18.7], "la": "start", "dx": 10, "dy": 14}, {"id": "mes", "name": "메시나", "country": "이탈리아", "lat": 38.19, "lon": 15.55, "elev": 59, "zone": "temp", "sub": "온대 기후 (지중해성)", "temp": [12.4, 12.3, 14.0, 16.2, 20.0, 24.2, 27.2, 27.8, 24.4, 20.9, 17.1, 13.7], "prec": [118.5, 92.4, 94.0, 65.5, 37.1, 32.1, 19.8, 29.9, 91.8, 114.1, 126.9, 127.3], "la": "start", "dx": 10, "dy": 14}, {"id": "mos", "name": "모스크바", "country": "러시아", "lat": 55.76, "lon": 37.62, "elev": 147, "zone": "cold", "sub": "냉대 기후", "temp": [-6.2, -5.9, -0.7, 6.9, 13.6, 17.3, 19.7, 17.6, 11.9, 5.8, -0.5, -4.4], "prec": [53, 44, 39, 37, 61, 78, 84, 78, 66, 70, 52, 51], "la": "start", "dx": 10, "dy": -6}, {"id": "utq", "name": "우트키아빅", "country": "미국(알래스카)", "lat": 71.29, "lon": -156.79, "elev": 3, "zone": "polar", "sub": "한대 기후", "temp": [-24.2, -24.4, -23.6, -15.6, -5.2, 2.2, 5.4, 4.3, 0.9, -6.0, -14.6, -21.3], "prec": [3.6, 5.3, 4.6, 4.6, 7.1, 11.0, 25.0, 28.0, 20.0, 14.0, 9.4, 5.6], "la": "start", "dx": 10, "dy": 14}, {"id": "bog", "name": "보고타", "country": "콜롬비아", "lat": 4.71, "lon": -74.07, "elev": 2547, "zone": "high", "sub": "고산 기후", "temp": [13.6, 14.0, 14.1, 14.3, 14.3, 14.2, 13.8, 13.8, 13.8, 13.7, 13.8, 13.7], "prec": [32.9, 51.4, 83.4, 116.7, 109.0, 57.4, 48.6, 44.3, 56.7, 108.2, 107.2, 61.4], "la": "end", "dx": -10, "dy": -6}, {"id": "man", "name": "마나우스", "country": "브라질", "lat": -3.12, "lon": -60.02, "elev": 92, "zone": "trop", "sub": "열대 우림 기후", "temp": [26.6, 26.6, 26.6, 26.7, 27.0, 27.3, 27.5, 28.2, 28.6, 28.5, 28.0, 27.2], "prec": [305.6, 296.8, 320.9, 331.0, 233.3, 117.2, 67.1, 56.1, 79.0, 113.9, 188.0, 253.5], "la": "start", "dx": 10, "dy": 14}, {"id": "cus", "name": "쿠스코", "country": "페루", "lat": -13.53, "lon": -71.97, "elev": 3249, "zone": "high", "sub": "고산 기후", "temp": [14.3, 14.3, 14.3, 13.7, 12.5, 11.4, 10.9, 12.3, 13.5, 14.5, 15.1, 14.5], "prec": [153.4, 132.1, 105.9, 38.4, 7.1, 3.3, 5.9, 6.6, 18.0, 54.5, 77.3, 125.2], "la": "end", "dx": -10, "dy": 4}];
   CITIES.forEach(function(c){ var p=px(c.lon,c.lat); c.x=p[0]; c.y=p[1]; });
   var ZONE_NAME={trop:"열대",arid:"건조",temp:"온대",cold:"냉대",polar:"한대",high:"고산"};
-  var CL={sel:[],labels:true,zones:{trop:1,arid:1,temp:1,cold:1,polar:1,high:1}};
+  var CL={sel:[],labels:true,showBase:true,zones:{trop:1,arid:1,temp:1,cold:1,polar:1,high:1}};
   var MON=["1","2","3","4","5","6","7","8","9","10","11","12"];
   function cityById(id){ for(var i=0;i<CITIES.length;i++) if(CITIES[i].id===id) return CITIES[i]; }
 
@@ -1371,6 +1534,7 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
   function renderCities(){
     var g=el("cities"); g.innerHTML="";
     var s=ZS;
+    if(!CL.showBase) return;
     CITIES.forEach(function(c){
       var i=selIndex(c.id), col="var(--z"+c.zone+")";
       var node=mk("g",{class:"city","data-id":c.id});
@@ -1470,9 +1634,127 @@ li.cold .swatch{background:var(--zcold)} li.polar .swatch{background:var(--zpola
       '<button class="btn x" data-rm="'+c.id+'">비교에서 빼기</button>'+
     '</div>';
   }
+  /* ---------- 우리 반 여행 코스 (학생이 고른 도시) ---------- */
+  var CKEY="geo-courses-v1";
+  var CO={list:[],sel:null,placing:null,edit:null,zone:"trop"};
+  function coSave(){ try{ localStorage.setItem(CKEY,JSON.stringify(CO.list)); }catch(e){ coFlash("저장 공간이 가득 찼어요.",true); } }
+  function coLoad(){ try{ var r=localStorage.getItem(CKEY); if(r){ var d=JSON.parse(r); if(Array.isArray(d)) CO.list=d; } }catch(e){} }
+  var coFlashT;
+  function coFlash(msg,bad){
+    var s=el("courseline"); s.textContent=msg; s.style.color=bad?"var(--no)":"var(--muted)";
+    clearTimeout(coFlashT); if(!CO.placing) coFlashT=setTimeout(function(){ s.textContent=""; },bad?5000:2200);
+  }
+  function courseById(id){ for(var i=0;i<CO.list.length;i++) if(CO.list[i].id===id) return CO.list[i]; return null; }
+  function normLink(u){
+    u=(u||"").trim(); if(!u) return "";
+    if(!/^https?:\/\//i.test(u)) u="https://"+u;
+    return u;
+  }
+  function setPlacing(id){
+    CO.placing=id; svg.classList.toggle("placing",!!id);
+    if(id) coFlash("지도에서 도시 자리를 클릭하세요 (확대해서 찍으면 더 정확해요)");
+  }
+  function placeCourse(pt){
+    var c=courseById(CO.placing); if(!c){ setPlacing(null); return; }
+    c.x=pt[0]; c.y=pt[1]; c.lon=+(pt[0]/W*360-180).toFixed(2); c.lat=+(90-pt[1]/H*180).toFixed(2);
+    setPlacing(null); coSave(); coFlash("'"+c.name+"' 자리를 정했어요."); selectCourse(c.id);
+  }
+  function openCourseForm(c){
+    CO.edit=c?c.id:"new";
+    el("cfTitle").textContent=c?"여행 코스 편집":"여행 코스 추가";
+    el("cfName").value=c?c.name:""; el("cfWho").value=c?(c.who||""):""; el("cfLink").value=c?(c.link||""):"";
+    CO.zone=c?c.zone:"trop";
+    Array.prototype.forEach.call(el("cfZones").children,function(b){ b.setAttribute("aria-pressed",b.dataset.z===CO.zone?"true":"false"); });
+    el("cfNote").textContent=c&&c.x!=null?"저장하면 바로 반영돼요. 자리를 바꾸려면 '위치 옮기기'를 쓰세요.":"저장을 누른 뒤 지도에서 도시 자리를 클릭하세요.";
+    el("courseForm").classList.remove("hidden"); el("courseCard").classList.add("hidden"); el("climateHelp").classList.add("hidden");
+    el("cfName").focus();
+  }
+  function closeCourseForm(){ CO.edit=null; el("courseForm").classList.add("hidden"); renderClimate(); }
+  function selectCourse(id){
+    CO.sel=id; CO.edit=null; el("courseForm").classList.add("hidden");
+    var c=courseById(id);
+    if(!c){ el("courseCard").classList.add("hidden"); renderClimate(); return; }
+    el("ccZone").textContent=ZONE_NAME[c.zone]+" 기후"; el("ccZone").className="kind "+c.zone;
+    el("ccName").textContent=(CO.list.indexOf(c)+1)+"코스 · "+c.name;
+    var meta=[]; if(c.who) meta.push("발표: "+c.who);
+    if(c.lat!=null) meta.push((c.lat>=0?"북위 ":"남위 ")+Math.abs(c.lat).toFixed(1)+"° · "+(c.lon>=0?"동경 ":"서경 ")+Math.abs(c.lon).toFixed(1)+"°");
+    else meta.push("아직 지도에 자리를 찍지 않았어요.");
+    el("ccMeta").textContent=meta.join("  ·  ");
+    var a=el("ccOpen");
+    if(c.link){ a.href=c.link; a.classList.remove("hidden"); el("ccNoLink").classList.add("hidden"); }
+    else { a.removeAttribute("href"); a.classList.add("hidden"); el("ccNoLink").classList.remove("hidden"); }
+    el("courseCard").classList.remove("hidden");
+    renderClimate();
+  }
+  function renderCourses(){
+    var g=el("courses"); g.innerHTML="";
+    var s=ZS;
+    CO.list.forEach(function(c,idx){
+      if(c.x==null) return;
+      var sel=(CO.sel===c.id), col="var(--z"+c.zone+")", R=(sel?16:14)*s;
+      var node=mk("g",{class:"course"+(sel?" sel":""),"data-id":c.id});
+      if(sel) node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(R+7).toFixed(2),fill:"none",stroke:"var(--accent)","stroke-width":(2.5*s).toFixed(2),"stroke-dasharray":(4*s)+" "+(3*s)}));
+      node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R.toFixed(2),fill:col,stroke:"var(--ink)","stroke-width":(2*s).toFixed(2)}));
+      var num=mk("text",{x:c.x,y:c.y+5*s,"text-anchor":"middle","font-size":(14*s).toFixed(2),"font-weight":"700",fill:"var(--ink)","font-family":"IBM Plex Mono,monospace"});
+      num.textContent=String(idx+1); node.appendChild(num);
+      var tx=mk("text",{x:c.x+(R+5*s),y:c.y+5*s,class:"colbl","font-size":((sel?21:19)*s).toFixed(2),"stroke-width":(5*s).toFixed(2)});
+      tx.textContent=c.name+(c.who?" ("+c.who+")":""); node.appendChild(tx);
+      node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(20*s).toFixed(2),fill:"transparent"}));
+      g.appendChild(node);
+    });
+  }
+  function buildCourseChips(){
+    var ul=el("courseChips"); ul.innerHTML="";
+    if(!CO.list.length){
+      var li0=document.createElement("li"); li0.style.cursor="default"; li0.textContent="아직 없어요. 위쪽 '여행 코스 추가'로 학생이 고른 도시를 넣으세요."; ul.appendChild(li0); return;
+    }
+    CO.list.forEach(function(c,idx){
+      var li=document.createElement("li");
+      li.className=c.zone+(CO.sel===c.id?" sel":"");
+      li.innerHTML='<span class="swatch"></span><span class="num">'+(idx+1)+'</span><span>'+c.name+'</span><em>'+(c.who||ZONE_NAME[c.zone])+(c.x==null?" · 위치 없음":"")+'</em>';
+      li.addEventListener("click",function(){ if(CO.sel===c.id) selectCourse(null); else selectCourse(c.id); });
+      ul.appendChild(li);
+    });
+  }
+  el("courseAddBtn").addEventListener("click",function(){ setPlacing(null); openCourseForm(null); });
+  Array.prototype.forEach.call(el("cfZones").children,function(b){
+    b.addEventListener("click",function(){ CO.zone=b.dataset.z; Array.prototype.forEach.call(el("cfZones").children,function(o){ o.setAttribute("aria-pressed",o===b?"true":"false"); }); });
+  });
+  el("cfSave").addEventListener("click",function(){
+    var name=el("cfName").value.trim(); if(!name){ el("cfName").focus(); coFlash("코스 이름을 써 주세요.",true); return; }
+    var link=normLink(el("cfLink").value), who=el("cfWho").value.trim(), c;
+    if(CO.edit==="new"){
+      c={id:"c"+Date.now().toString(36),name:name,who:who,zone:CO.zone,link:link,x:null,y:null,lat:null,lon:null};
+      CO.list.push(c); coSave(); CO.edit=null; el("courseForm").classList.add("hidden");
+      CO.sel=c.id; renderClimate(); setPlacing(c.id);
+    } else {
+      c=courseById(CO.edit); if(!c) return;
+      c.name=name; c.who=who; c.zone=CO.zone; c.link=link; coSave();
+      el("courseForm").classList.add("hidden"); CO.edit=null;
+      if(c.x==null) setPlacing(c.id); else coFlash("저장했어요.");
+      selectCourse(c.id);
+    }
+  });
+  el("cfCancel").addEventListener("click",function(){ closeCourseForm(); if(CO.sel) selectCourse(CO.sel); });
+  el("ccEdit").addEventListener("click",function(){ var c=courseById(CO.sel); if(c) openCourseForm(c); });
+  el("ccMove").addEventListener("click",function(){ if(CO.sel) setPlacing(CO.sel); });
+  el("ccDel").addEventListener("click",function(){
+    var c=courseById(CO.sel); if(!c) return;
+    if(!confirm("'"+c.name+"' 코스를 지울까요?")) return;
+    CO.list.splice(CO.list.indexOf(c),1); coSave(); setPlacing(null); selectCourse(null);
+  });
+  el("ccClose").addEventListener("click",function(){ setPlacing(null); selectCourse(null); });
+  el("baseCityBtn").addEventListener("click",function(){
+    CL.showBase=!CL.showBase; this.setAttribute("aria-pressed",CL.showBase?"true":"false");
+    if(!CL.showBase) CL.sel=[];
+    show("cityList",CL.showBase); renderClimate();
+  });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&CO.placing){ setPlacing(null); coFlash("자리 정하기를 취소했어요."); } });
+  coLoad();
+
   function renderClimate(){
-    applyZones(); renderCities(); renderLatLines(); buildCityChips();
-    el("climateHelp").classList.toggle("hidden",CL.sel.length>0);
+    applyZones(); renderCities(); renderCourses(); renderLatLines(); buildCityChips(); buildCourseChips();
+    el("climateHelp").classList.toggle("hidden",CL.sel.length>0||CO.edit!==null||(CO.sel&&courseById(CO.sel)));
     el("cmpA").innerHTML=CL.sel[0]?cmpCard(cityById(CL.sel[0]),0):"";
     el("cmpB").innerHTML=CL.sel[1]?cmpCard(cityById(CL.sel[1]),1):"";
   }
