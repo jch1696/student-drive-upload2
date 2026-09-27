@@ -627,6 +627,13 @@ svg#map.placing{cursor:crosshair!important}
           <p class="note" id="ccMeta"></p>
           <a class="btn primary" id="ccOpen" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;display:block">발표 자료 열기 ↗</a>
           <p class="note hidden" id="ccNoLink">아직 링크가 없어요. 편집에서 캔바 링크를 넣어 주세요.</p>
+          <img class="thumb hidden" id="ccThumb" alt="">
+          <div class="rowbtns">
+            <button class="btn" id="ccPhoto">사진 넣기</button>
+            <button class="btn hidden" id="ccPhotoDel">사진 지우기</button>
+          </div>
+          <p class="note">사진은 <b>Ctrl+V</b>로 붙여넣거나 파일을 끌어다 놓아도 돼요.</p>
+          <input type="file" id="ccFile" accept="image/*" hidden>
           <div class="rowbtns">
             <button class="btn" id="ccEdit">편집</button>
             <button class="btn" id="ccMove">위치 옮기기</button>
@@ -1687,23 +1694,96 @@ svg#map.placing{cursor:crosshair!important}
     var a=el("ccOpen");
     if(c.link){ a.href=c.link; a.classList.remove("hidden"); el("ccNoLink").classList.add("hidden"); }
     else { a.removeAttribute("href"); a.classList.add("hidden"); el("ccNoLink").classList.remove("hidden"); }
+    var th=el("ccThumb");
+    if(c.photo){ th.src=c.photo; th.classList.remove("hidden"); el("ccPhotoDel").classList.remove("hidden"); el("ccPhoto").textContent="사진 바꾸기"; }
+    else { th.removeAttribute("src"); th.classList.add("hidden"); el("ccPhotoDel").classList.add("hidden"); el("ccPhoto").textContent="사진 넣기"; }
     el("courseCard").classList.remove("hidden");
     renderClimate();
   }
+  function takeCoursePhoto(file,id){
+    var c=courseById(id);
+    if(!c){ coFlash("먼저 사진을 넣을 코스를 눌러 고르세요.",true); return; }
+    if(!/^image\//.test(file.type)){ coFlash("사진 파일만 넣을 수 있어요.",true); return; }
+    var fr=new FileReader();
+    fr.onload=function(){
+      var img=new Image();
+      img.onload=function(){
+        var m=440, r=Math.min(1,m/Math.max(img.width,img.height));
+        var cv=document.createElement("canvas");
+        cv.width=Math.max(1,Math.round(img.width*r)); cv.height=Math.max(1,Math.round(img.height*r));
+        cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+        c.photo=cv.toDataURL("image/jpeg",0.72);
+        coSave(); selectCourse(c.id); coFlash("사진을 넣었어요.");
+      };
+      img.onerror=function(){ coFlash("이 사진은 넣을 수 없어요.",true); };
+      img.src=fr.result;
+    };
+    fr.onerror=function(){ coFlash("사진을 읽지 못했어요.",true); };
+    fr.readAsDataURL(file);
+  }
+  el("ccPhoto").addEventListener("click",function(){ el("ccFile").click(); });
+  el("ccFile").addEventListener("change",function(){ var f=this.files&&this.files[0]; if(f) takeCoursePhoto(f,CO.sel); this.value=""; });
+  el("ccPhotoDel").addEventListener("click",function(){ var c=courseById(CO.sel); if(!c) return; c.photo=null; coSave(); selectCourse(c.id); });
+  document.addEventListener("paste",function(e){
+    if(mode!=="climate"||!e.clipboardData) return;
+    var items=e.clipboardData.items||[];
+    for(var i=0;i<items.length;i++) if(items[i].type&&items[i].type.indexOf("image")===0){
+      var f=items[i].getAsFile(); if(f){ e.preventDefault(); takeCoursePhoto(f,CO.sel); } return;
+    }
+  });
+  ["dragenter","dragover"].forEach(function(ev){
+    document.addEventListener(ev,function(e){ if(mode==="climate"){ e.preventDefault(); e.dataTransfer.dropEffect="copy"; } });
+  });
+  document.addEventListener("drop",function(e){
+    if(mode!=="climate") return;
+    e.preventDefault();
+    var dt=e.dataTransfer; if(!dt) return;
+    var f=null;
+    if(dt.files&&dt.files.length) f=dt.files[0];
+    else if(dt.items) for(var i=0;i<dt.items.length;i++) if(dt.items[i].kind==="file"){ f=dt.items[i].getAsFile(); break; }
+    if(!f){ coFlash("웹에서 바로 끌어온 사진은 넣을 수 없어요. 이미지 복사 후 붙여넣거나 저장한 파일을 끌어다 놓으세요.",true); return; }
+    var id=CO.sel;
+    if(svg.contains(e.target)||e.target===svg){
+      var p=toMap(e), best=Infinity;
+      CO.list.forEach(function(c){ if(c.x==null) return; var d=Math.hypot(p[0]-c.x,p[1]-c.y); if(d<best&&d<70/Z.z){ best=d; id=c.id; } });
+    }
+    takeCoursePhoto(f,id);
+  });
   function renderCourses(){
     var g=el("courses"); g.innerHTML="";
     var s=ZS;
     CO.list.forEach(function(c,idx){
       if(c.x==null) return;
-      var sel=(CO.sel===c.id), col="var(--z"+c.zone+")", R=(sel?16:14)*s;
+      var sel=(CO.sel===c.id), col="var(--z"+c.zone+")";
       var node=mk("g",{class:"course"+(sel?" sel":""),"data-id":c.id});
-      if(sel) node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(R+7).toFixed(2),fill:"none",stroke:"var(--accent)","stroke-width":(2.5*s).toFixed(2),"stroke-dasharray":(4*s)+" "+(3*s)}));
-      node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R.toFixed(2),fill:col,stroke:"var(--ink)","stroke-width":(2*s).toFixed(2)}));
-      var num=mk("text",{x:c.x,y:c.y+5*s,"text-anchor":"middle","font-size":(14*s).toFixed(2),"font-weight":"700",fill:"var(--ink)","font-family":"IBM Plex Mono,monospace"});
-      num.textContent=String(idx+1); node.appendChild(num);
-      var tx=mk("text",{x:c.x+(R+5*s),y:c.y+5*s,class:"colbl","font-size":((sel?21:19)*s).toFixed(2),"stroke-width":(5*s).toFixed(2)});
-      tx.textContent=c.name+(c.who?" ("+c.who+")":""); node.appendChild(tx);
-      node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(20*s).toFixed(2),fill:"transparent"}));
+      var R, labelX;
+      if(c.photo){
+        R=(sel?30:26)*s;
+        var cid="cclip_"+c.id, cp=mk("clipPath",{id:cid});
+        cp.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R})); node.appendChild(cp);
+        if(sel) node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(R+8).toFixed(2),fill:"none",stroke:"var(--accent)","stroke-width":(2.5*s).toFixed(2),"stroke-dasharray":(4*s)+" "+(3*s)}));
+        node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R+2,fill:"var(--surface)"}));
+        var im=mk("image",{x:c.x-R,y:c.y-R,width:R*2,height:R*2,"clip-path":"url(#"+cid+")",preserveAspectRatio:"xMidYMid slice"});
+        im.setAttributeNS("http://www.w3.org/1999/xlink","href",c.photo); im.setAttribute("href",c.photo); node.appendChild(im);
+        node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R+0.5,fill:"none",stroke:col,"stroke-width":(3.5*s).toFixed(2)}));
+        var bx=c.x+R*0.72, by=c.y+R*0.72, br=10*s;
+        node.appendChild(mk("circle",{cx:bx,cy:by,r:br.toFixed(2),fill:col,stroke:"var(--ink)","stroke-width":(1.5*s).toFixed(2)}));
+        var bn=mk("text",{x:bx,y:by+3.8*s,"text-anchor":"middle","font-size":(11*s).toFixed(2),"font-weight":"700",fill:"var(--ink)","font-family":"IBM Plex Mono,monospace"});
+        bn.textContent=String(idx+1); node.appendChild(bn);
+        labelX=c.x+R+6*s;
+      } else {
+        R=(sel?16:14)*s;
+        if(sel) node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:(R+7).toFixed(2),fill:"none",stroke:"var(--accent)","stroke-width":(2.5*s).toFixed(2),"stroke-dasharray":(4*s)+" "+(3*s)}));
+        node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:R.toFixed(2),fill:col,stroke:"var(--ink)","stroke-width":(2*s).toFixed(2)}));
+        var num=mk("text",{x:c.x,y:c.y+5*s,"text-anchor":"middle","font-size":(14*s).toFixed(2),"font-weight":"700",fill:"var(--ink)","font-family":"IBM Plex Mono,monospace"});
+        num.textContent=String(idx+1); node.appendChild(num);
+        labelX=c.x+R+5*s;
+      }
+      if(sel){
+        var tx=mk("text",{x:labelX,y:c.y+6*s,class:"colbl","font-size":(21*s).toFixed(2),"stroke-width":(5*s).toFixed(2)});
+        tx.textContent=c.name+(c.who?" ("+c.who+")":""); node.appendChild(tx);
+      }
+      node.appendChild(mk("circle",{cx:c.x,cy:c.y,r:Math.max(20*s,R).toFixed(2),fill:"transparent"}));
       g.appendChild(node);
     });
   }
